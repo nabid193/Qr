@@ -1,56 +1,35 @@
-# QR Scanner — Vercel-ready static PWA
+# QR Scanner
 
-A browser-only QR scanner and QR generator created and developed by Nabid. No backend or database is required.
+QR Scanner is a simple web app for scanning QR codes and creating your own. I built it to make everyday QR tasks quick and easy, without needing to create an account.
 
-## Included features
+## What it can do
 
-- Scan QR codes with the device camera (HTTPS required).
-- Scan QR codes from uploaded images.
-- Generate QR codes for text, URLs, email, phone, Wi-Fi and vCard contacts.
-- Local scan history with search, delete, JSON export and CSV export.
-- Dark mode and scan preferences.
-- PWA manifest, installable app icons and offline service worker.
-- Scan history and settings stay in the browser's local storage; this app does not send QR contents to a server.
+- Scan QR codes using your device's camera.
+- Scan a QR code from an uploaded image.
+- Create QR codes for text, websites, email addresses, phone numbers, Wi-Fi details, and contact information.
+- Download generated QR codes as PNG images.
+- View, search, delete, and export your scan history.
+- Switch between light and dark mode.
+- Install the app on supported devices.
 
-## Deploy to Vercel
+## How to use it
 
-1. Extract this ZIP file.
-2. Create a GitHub repository and upload **all files and folders** from this project. Keep `index.html`, `manifest.json`, `sw.js`, `offline.html` and `vercel.json` in the repository root.
-3. Sign in to Vercel and choose **Add New → Project**.
-4. Import the GitHub repository.
-5. Choose **Other** as the framework preset (or let Vercel detect a static site).
-6. Leave the Build Command empty. Set the Output Directory to `.` if Vercel asks for one. No install command is needed.
-7. Click **Deploy**. Vercel will provide an HTTPS URL.
+Open the website in your browser.
 
-You can also deploy the folder with the Vercel CLI from a terminal after installing the CLI and logging in:
+To scan a code, allow camera access and choose **Start Camera**, or upload an image containing a QR code.
 
-```bash
-vercel
-```
+To create a code, open the **Generate** section, choose what kind of QR code you want, enter the details, and select **Generate QR Code**. You can then download the image.
 
-For a production deployment:
+## Run it locally
 
-```bash
-vercel --prod
-```
+Download or clone this repository and serve the project folder using a local web server. Open the local address in your browser.
 
-## Test after deployment
+Camera access and service workers generally require a secure context, such as `localhost` or an HTTPS website.
 
-1. Open the HTTPS Vercel URL on a phone.
-2. Allow camera permission and test **Start Camera**.
-3. Test **Scan Image**, then generate and download a QR code.
-4. Open **More → About** and confirm the app version and privacy note.
-5. Visit the website once while online, then turn on airplane mode and reload. The app shell and QR libraries are cached for offline use after the service worker has installed successfully.
-6. Install it from the browser's **Install app** or **Add to Home Screen** option.
+## Privacy
 
-## Notes
+Scan history and app settings are saved in your browser on your device. This project does not require an account or its own backend server.
 
-- Camera access requires HTTPS (Vercel provides HTTPS automatically) or `localhost` during local development. The camera is released when you leave the Scanner tab or background the app.
-- Offline support requires one successful online visit and completion of service-worker installation so the app shell and its CDN libraries can be cached. Wait a few seconds after the first visit, then reload once before testing airplane mode.
-- Scan history is stored per browser/device. It is not synced between devices and may be cleared if browser site data is deleted.
-- The QR libraries are loaded from jsDelivr and cached by the service worker for subsequent offline use.
+## Built by
 
-
-## Project credit
-
-Created and developed by **Nabid**.
+Made by **Nabid**.
