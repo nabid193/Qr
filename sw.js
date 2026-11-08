@@ -1,6 +1,6 @@
-/* QR Scanner — Service Worker v5.0.0 */
+/* QR Scanner — Service Worker v6.0.0 */
 const CACHE_PREFIX = 'qr-scanner-';
-const CACHE_NAME = 'qr-scanner-v5';
+const CACHE_NAME = 'qr-scanner-v6';
 const APP_SHELL = [
   './',
   './index.html',
@@ -12,7 +12,8 @@ const APP_SHELL = [
 ];
 const CDN_ASSETS = [
   'https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.min.js',
-  'https://cdn.jsdelivr.net/npm/qrcode@1.5.4/lib/browser.min.js'
+  'https://cdnjs.cloudflare.com/ajax/libs/qrcode/1.5.1/qrcode.js',
+  'https://cdn.jsdelivr.net/npm/qrcode@1.5.1/build/qrcode.min.js'
 ];
 
 self.addEventListener('install', (event) => {

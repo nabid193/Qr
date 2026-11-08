@@ -18,7 +18,43 @@
 
   <!-- CDN Libraries -->
   <script crossorigin="anonymous" src="https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.min.js" onerror="this.onerror=null;this.src='https://unpkg.com/jsqr@1.4.0/dist/jsQR.min.js';"></script>
-  <script crossorigin="anonymous" src="https://cdn.jsdelivr.net/npm/qrcode@1.5.4/lib/browser.min.js" onerror="this.onerror=null;this.src='https://unpkg.com/qrcode@1.5.4/lib/browser.min.js';"></script>
+  <script>
+  // Load a browser-ready QR generator bundle from a known compatible release.
+  // qrcode 1.5.1 still publishes the documented browser build bundle.
+  window.qrCodeLibraryReady = new Promise((resolve) => {
+    const sources = [
+      'https://cdnjs.cloudflare.com/ajax/libs/qrcode/1.5.1/qrcode.js',
+      'https://cdn.jsdelivr.net/npm/qrcode@1.5.1/build/qrcode.min.js'
+    ];
+    let index = 0;
+
+    function tryNextSource() {
+      if (window.QRCode && typeof window.QRCode.toCanvas === 'function') {
+        resolve(true);
+        return;
+      }
+      if (index >= sources.length) {
+        resolve(false);
+        return;
+      }
+
+      const script = document.createElement('script');
+      script.src = sources[index++];
+      script.crossOrigin = 'anonymous';
+      script.onload = () => {
+        if (window.QRCode && typeof window.QRCode.toCanvas === 'function') {
+          resolve(true);
+        } else {
+          tryNextSource();
+        }
+      };
+      script.onerror = tryNextSource;
+      document.head.appendChild(script);
+    }
+
+    tryNextSource();
+  });
+</script>
 
   <style>
     /* =====================================================
@@ -2152,7 +2188,7 @@ function renderQrFields() {
   document.getElementById('qr-fields').innerHTML = QR_FIELD_TEMPLATES[type] || QR_FIELD_TEMPLATES.text;
 }
 
-function generateQr() {
+async function generateQr() {
   const type = document.getElementById('qr-type').value;
   const content = buildQrContent(type);
   if (!content) {
@@ -2164,8 +2200,14 @@ function generateQr() {
     showToast('⚠️ ' + message, 'error', 3500);
     return;
   }
-  if (!window.QRCode || typeof window.QRCode.toCanvas !== 'function') {
-    showToast('❌ QR generator library is unavailable. Refresh the page and try again.', 'error', 5000);
+  // Wait for the browser bundle to finish loading before generating.
+  const libraryReady = window.QRCode && typeof window.QRCode.toCanvas === 'function'
+    ? true
+    : await window.qrCodeLibraryReady;
+
+  if (!libraryReady || !window.QRCode || typeof window.QRCode.toCanvas !== 'function') {
+    showToast('❌ QR generator could not load. Check your internet connection and reload.', 'error', 6000);
+    console.error('QR generator failed to load from all configured CDNs.');
     return;
   }
 
