@@ -1,0 +1,2414 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <meta name="theme-color" content="#7C3AED" />
+  <meta name="description" content="QR Scanner lets you scan and generate QR codes. Created and developed by Nabid." />
+  <meta name="author" content="Nabid" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <meta name="apple-mobile-web-app-title" content="QR Scanner" />
+  <meta name="color-scheme" content="light dark" />
+  <meta name="mobile-web-app-capable" content="yes" />
+  <link rel="manifest" href="./manifest.json" />
+  <link rel="icon" href="./icons/icon.svg" type="image/svg+xml" />
+  <link rel="apple-touch-icon" href="./icons/icon-192.png" />
+  <title>QR Scanner</title>
+
+  <!-- CDN Libraries -->
+  <script crossorigin="anonymous" src="https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.min.js"></script>
+  <script crossorigin="anonymous" src="https://cdn.jsdelivr.net/npm/qrcode@1.5.3/build/qrcode.min.js"></script>
+
+  <style>
+    /* =====================================================
+       CSS CUSTOM PROPERTIES (LIGHT THEME)
+    ===================================================== */
+    :root {
+      --primary: #7C3AED;
+      --primary-dark: #5B21B6;
+      --primary-light: #EDE9FE;
+      --secondary: #06B6D4;
+      --accent: #F59E0B;
+      --bg: #F8F7FF;
+      --surface: #FFFFFF;
+      --surface-2: #F3F0FF;
+      --text: #1A1033;
+      --text-secondary: #6B7280;
+      --border: #E5E7EB;
+      --success: #10B981;
+      --error: #EF4444;
+      --warning: #F59E0B;
+      --card-shadow: 0 1px 3px rgba(0,0,0,0.07), 0 4px 16px rgba(124,58,237,0.06);
+      --card-shadow-hover: 0 4px 24px rgba(124,58,237,0.14);
+      --nav-height: 68px;
+      --header-height: 60px;
+      --radius: 16px;
+      --radius-sm: 10px;
+      --radius-xs: 6px;
+      --transition: 0.22s cubic-bezier(0.4,0,0.2,1);
+      --glass-bg: rgba(255,255,255,0.72);
+      --glass-border: rgba(255,255,255,0.5);
+      --gradient-primary: linear-gradient(135deg, #7C3AED 0%, #4F46E5 100%);
+      --gradient-hero: linear-gradient(160deg, #0f0820 0%, #1a0a3a 50%, #0d1b3a 100%);
+    }
+
+    /* =====================================================
+       DARK THEME
+    ===================================================== */
+    body.dark {
+      --bg: #0D0B1A;
+      --surface: #161228;
+      --surface-2: #1E1740;
+      --text: #F1F0FF;
+      --text-secondary: #9CA3AF;
+      --border: #2A2250;
+      --card-shadow: 0 1px 3px rgba(0,0,0,0.4), 0 4px 16px rgba(0,0,0,0.3);
+      --card-shadow-hover: 0 4px 24px rgba(124,58,237,0.3);
+      --glass-bg: rgba(22,18,40,0.8);
+      --glass-border: rgba(124,58,237,0.2);
+      --primary-light: #2D1F5A;
+    }
+
+    /* =====================================================
+       RESET & BASE
+    ===================================================== */
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    html, body {
+      height: 100%;
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      transition: background var(--transition), color var(--transition);
+      overscroll-behavior: none;
+      -webkit-tap-highlight-color: transparent;
+    }
+
+    button { cursor: pointer; border: none; outline: none; font-family: inherit; }
+    input, select, textarea { font-family: inherit; outline: none; }
+    a { color: var(--primary); text-decoration: none; }
+    a:hover { text-decoration: underline; }
+    img { max-width: 100%; }
+
+    /* =====================================================
+       APP SHELL
+    ===================================================== */
+    #app {
+      display: flex;
+      flex-direction: column;
+      height: 100vh;
+      height: 100dvh;
+      max-width: 600px;
+      margin: 0 auto;
+      position: relative;
+      overflow: hidden;
+    }
+
+    /* =====================================================
+       HEADER — Glassmorphism
+    ===================================================== */
+    #app-header {
+      position: fixed;
+      top: 0;
+      left: 50%;
+      transform: translateX(-50%);
+      width: 100%;
+      max-width: 600px;
+      height: var(--header-height);
+      background: var(--glass-bg);
+      backdrop-filter: blur(20px) saturate(1.8);
+      -webkit-backdrop-filter: blur(20px) saturate(1.8);
+      border-bottom: 1px solid var(--glass-border);
+      color: var(--text);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0 20px;
+      z-index: 100;
+      box-shadow: 0 2px 20px rgba(124,58,237,0.08);
+      transition: background var(--transition), border-color var(--transition);
+    }
+
+    /* When scanner is active, make header dark to blend with camera */
+    #app-header.scanner-active {
+      background: rgba(10,6,20,0.7);
+      border-bottom-color: rgba(255,255,255,0.08);
+    }
+    #app-header.scanner-active #header-title { color: #fff; }
+    #app-header.scanner-active .icon-btn { color: #fff; }
+
+    #header-title {
+      font-size: 1.05rem;
+      font-weight: 800;
+      letter-spacing: -0.3px;
+      color: var(--text);
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      transition: color var(--transition);
+    }
+
+    .logo-pill {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      width: 32px;
+      height: 32px;
+      border-radius: 9px;
+      background: var(--gradient-primary);
+      font-size: 1rem;
+      flex-shrink: 0;
+      box-shadow: 0 2px 8px rgba(124,58,237,0.4);
+    }
+
+    .header-actions { display: flex; gap: 4px; }
+
+    .icon-btn {
+      width: 38px;
+      height: 38px;
+      border-radius: 12px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: transparent;
+      color: var(--text);
+      font-size: 1rem;
+      transition: background var(--transition), color var(--transition);
+    }
+    .icon-btn:hover { background: var(--primary-light); }
+    .icon-btn:active { background: var(--border); }
+
+    /* =====================================================
+       MAIN CONTENT
+    ===================================================== */
+    #main-content {
+      flex: 1;
+      overflow-y: auto;
+      overflow-x: hidden;
+      padding-top: var(--header-height);
+      padding-bottom: var(--nav-height);
+      -webkit-overflow-scrolling: touch;
+      scroll-behavior: smooth;
+    }
+
+    /* =====================================================
+       TAB PANELS
+    ===================================================== */
+    .tab-panel {
+      display: none;
+      animation: fadeSlideIn 0.28s ease;
+      min-height: calc(100vh - var(--header-height) - var(--nav-height));
+    }
+    .tab-panel.active { display: block; }
+
+    @keyframes fadeSlideIn {
+      from { opacity: 0; transform: translateY(10px); }
+      to   { opacity: 1; transform: translateY(0); }
+    }
+
+    /* =====================================================
+       BOTTOM NAVIGATION — Glassmorphism pill
+    ===================================================== */
+    #bottom-nav {
+      position: fixed;
+      bottom: 0;
+      left: 50%;
+      transform: translateX(-50%);
+      width: 100%;
+      max-width: 600px;
+      height: var(--nav-height);
+      background: var(--glass-bg);
+      backdrop-filter: blur(20px) saturate(1.8);
+      -webkit-backdrop-filter: blur(20px) saturate(1.8);
+      border-top: 1px solid var(--glass-border);
+      display: flex;
+      z-index: 100;
+      box-shadow: 0 -4px 20px rgba(0,0,0,0.06);
+      transition: background var(--transition), border-color var(--transition);
+    }
+
+    .nav-item {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 3px;
+      background: transparent;
+      color: var(--text-secondary);
+      font-size: 0.62rem;
+      font-weight: 600;
+      letter-spacing: 0.4px;
+      text-transform: uppercase;
+      transition: color var(--transition);
+      position: relative;
+      padding: 8px 0 10px;
+    }
+
+    .nav-icon-wrap {
+      position: relative;
+      width: 44px;
+      height: 28px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      border-radius: 14px;
+      transition: background var(--transition), transform var(--transition);
+    }
+
+    .nav-item .nav-icon {
+      font-size: 1.25rem;
+      transition: transform var(--transition);
+      position: relative;
+      z-index: 1;
+    }
+
+    .nav-item.active { color: var(--primary); }
+
+    .nav-item.active .nav-icon-wrap {
+      background: var(--primary-light);
+      transform: translateY(-2px);
+    }
+
+    .nav-item.active .nav-icon {
+      transform: scale(1.1);
+    }
+
+    /* =====================================================
+       CARDS & COMMON COMPONENTS
+    ===================================================== */
+    .card {
+      background: var(--surface);
+      border-radius: var(--radius);
+      box-shadow: var(--card-shadow);
+      padding: 18px;
+      margin: 14px 16px;
+      transition: box-shadow var(--transition), background var(--transition);
+      border: 1px solid var(--border);
+    }
+    .card:hover { box-shadow: var(--card-shadow-hover); }
+
+    .card-title {
+      font-size: 0.7rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 1.2px;
+      color: var(--text-secondary);
+      margin-bottom: 14px;
+    }
+
+    /* Buttons */
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+      padding: 11px 22px;
+      border-radius: 24px;
+      font-size: 0.88rem;
+      font-weight: 600;
+      letter-spacing: 0.3px;
+      transition: all var(--transition);
+      border: none;
+      white-space: nowrap;
+      text-decoration: none !important;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .btn::after {
+      content: '';
+      position: absolute;
+      inset: 0;
+      background: rgba(255,255,255,0);
+      transition: background var(--transition);
+      border-radius: inherit;
+    }
+    .btn:active::after { background: rgba(0,0,0,0.08); }
+
+    .btn-primary {
+      background: var(--gradient-primary);
+      color: #fff;
+      box-shadow: 0 4px 14px rgba(124,58,237,0.35);
+    }
+    .btn-primary:hover {
+      box-shadow: 0 6px 20px rgba(124,58,237,0.5);
+      transform: translateY(-1px);
+    }
+    .btn-primary:active { transform: translateY(0); box-shadow: 0 2px 8px rgba(124,58,237,0.3); }
+
+    .btn-secondary {
+      background: var(--primary-light);
+      color: var(--primary);
+      box-shadow: none;
+    }
+    .btn-secondary:hover { background: var(--primary-light); filter: brightness(0.95); }
+
+    .btn-danger {
+      background: rgba(239,68,68,0.1);
+      color: var(--error);
+    }
+    .btn-danger:hover { background: var(--error); color: #fff; }
+
+    .btn-icon {
+      padding: 9px 16px;
+      border-radius: 24px;
+      background: var(--surface-2);
+      color: var(--text);
+      border: 1px solid var(--border);
+      font-size: 0.82rem;
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      transition: all var(--transition);
+    }
+    .btn-icon:hover { background: var(--border); }
+
+    .btn-sm { padding: 7px 16px; font-size: 0.8rem; }
+    .btn-full { width: 100%; border-radius: var(--radius-sm); }
+
+    /* =====================================================
+       SECTION: SCANNER TAB
+    ===================================================== */
+    #scanner-panel { padding: 0; }
+
+    /* Camera viewfinder — full gradient hero */
+    #scanner-container {
+      position: relative;
+      width: 100%;
+      background: var(--gradient-hero);
+      aspect-ratio: 4 / 3;
+      max-height: 62vh;
+      overflow: hidden;
+    }
+
+    #scanner-video {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      display: block;
+    }
+
+    #scanner-canvas { display: none; }
+
+    /* Scanner overlay */
+    #scanner-overlay {
+      position: absolute;
+      inset: 0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      pointer-events: none;
+    }
+
+    .viewfinder {
+      position: relative;
+      width: 64%;
+      aspect-ratio: 1;
+      max-width: 230px;
+    }
+
+    /* Corner brackets — thicker, rounded, animated */
+    .corner {
+      position: absolute;
+      width: 32px;
+      height: 32px;
+      border-color: #A78BFA;
+      border-style: solid;
+      transition: border-color 0.3s;
+    }
+    .corner-tl { top: 0; left: 0; border-width: 4px 0 0 4px; border-radius: 6px 0 0 0; }
+    .corner-tr { top: 0; right: 0; border-width: 4px 4px 0 0; border-radius: 0 6px 0 0; }
+    .corner-bl { bottom: 0; left: 0; border-width: 0 0 4px 4px; border-radius: 0 0 0 6px; }
+    .corner-br { bottom: 0; right: 0; border-width: 0 4px 4px 0; border-radius: 0 0 6px 0; }
+
+    /* Animated inner corners pulse when scanning */
+    .viewfinder::before {
+      content: '';
+      position: absolute;
+      inset: -1px;
+      border-radius: 4px;
+      border: 1px solid rgba(167,139,250,0.2);
+      animation: pulse-border 2s ease-in-out infinite;
+    }
+    @keyframes pulse-border {
+      0%, 100% { opacity: 0.2; }
+      50%       { opacity: 0.6; }
+    }
+
+    /* Scan line */
+    #scan-line {
+      position: absolute;
+      left: 6px;
+      right: 6px;
+      height: 2px;
+      background: linear-gradient(90deg, transparent 0%, #A78BFA 30%, #7C3AED 50%, #A78BFA 70%, transparent 100%);
+      box-shadow: 0 0 10px #7C3AED, 0 0 20px rgba(124,58,237,0.4);
+      animation: scanMove 2.2s cubic-bezier(0.45, 0, 0.55, 1) infinite;
+      border-radius: 2px;
+    }
+
+    @keyframes scanMove {
+      0%   { top: 6px; opacity: 0; }
+      5%   { opacity: 1; }
+      95%  { opacity: 1; }
+      100% { top: calc(100% - 8px); opacity: 0; }
+    }
+
+    /* Dim areas outside viewfinder */
+    .vf-cutout {
+      position: absolute;
+      width: 64%;
+      aspect-ratio: 1;
+      max-width: 230px;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      background: transparent;
+      box-shadow: 0 0 0 2000px rgba(0,0,0,0.55);
+      border-radius: 6px;
+    }
+
+    /* Camera placeholder — rich gradient state */
+    #camera-placeholder {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 14px;
+      height: 100%;
+      min-height: 280px;
+      text-align: center;
+      padding: 32px 24px;
+    }
+
+    .placeholder-graphic {
+      width: 90px;
+      height: 90px;
+      border-radius: 28px;
+      background: rgba(124,58,237,0.15);
+      border: 2px solid rgba(124,58,237,0.3);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 2.8rem;
+      backdrop-filter: blur(8px);
+      animation: float 3s ease-in-out infinite;
+    }
+
+    @keyframes float {
+      0%, 100% { transform: translateY(0); }
+      50%       { transform: translateY(-6px); }
+    }
+
+    #camera-placeholder h2 {
+      font-size: 1.1rem;
+      font-weight: 700;
+      color: #fff;
+      letter-spacing: -0.2px;
+    }
+
+    #camera-placeholder p#camera-msg {
+      font-size: 0.85rem;
+      color: rgba(255,255,255,0.65);
+      max-width: 220px;
+      line-height: 1.6;
+    }
+
+    /* Scanner controls overlay */
+    #scanner-controls {
+      position: absolute;
+      bottom: 14px;
+      left: 0;
+      right: 0;
+      display: flex;
+      justify-content: center;
+      gap: 14px;
+      pointer-events: all;
+    }
+
+    .scanner-ctrl-btn {
+      width: 46px;
+      height: 46px;
+      border-radius: 14px;
+      background: rgba(10,6,20,0.6);
+      color: #fff;
+      border: 1.5px solid rgba(255,255,255,0.15);
+      font-size: 1.1rem;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: all 0.2s;
+      backdrop-filter: blur(10px);
+    }
+    .scanner-ctrl-btn:hover {
+      background: rgba(124,58,237,0.5);
+      border-color: rgba(167,139,250,0.5);
+    }
+    .scanner-ctrl-btn.active {
+      background: rgba(167,139,250,0.3);
+      border-color: #A78BFA;
+    }
+
+    /* Scan from image */
+    #scan-image-section {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 10px 16px;
+      border-top: 1px solid var(--border);
+      background: var(--surface);
+    }
+
+    #scan-image-label {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 8px 16px;
+      border-radius: 24px;
+      background: var(--surface-2);
+      color: var(--text);
+      border: 1px solid var(--border);
+      font-size: 0.82rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all var(--transition);
+      white-space: nowrap;
+    }
+    #scan-image-label:hover { background: var(--primary-light); color: var(--primary); border-color: var(--primary); }
+    #scan-image-input { display: none; }
+
+    #scan-image-hint {
+      font-size: 0.78rem;
+      color: var(--text-secondary);
+    }
+
+    /* Result card */
+    #result-section { padding: 0 16px 16px; }
+
+    #result-card {
+      display: none;
+      background: var(--surface);
+      border-radius: var(--radius);
+      box-shadow: var(--card-shadow);
+      padding: 18px;
+      border: 1px solid var(--border);
+      border-left: 4px solid var(--success);
+      animation: slideUp 0.3s ease;
+      margin-top: 14px;
+    }
+
+    @keyframes slideUp {
+      from { opacity: 0; transform: translateY(16px); }
+      to   { opacity: 1; transform: translateY(0); }
+    }
+
+    #result-card.visible { display: block; }
+
+    .result-header {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      margin-bottom: 10px;
+    }
+
+    .result-type-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+      padding: 4px 11px;
+      border-radius: 20px;
+      font-size: 0.7rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.6px;
+    }
+
+    .result-content {
+      font-size: 0.93rem;
+      word-break: break-all;
+      line-height: 1.6;
+      color: var(--text);
+      margin-bottom: 12px;
+      max-height: 110px;
+      overflow-y: auto;
+    }
+
+    .result-actions {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+    }
+
+    .result-timestamp {
+      font-size: 0.72rem;
+      color: var(--text-secondary);
+      margin-bottom: 8px;
+    }
+
+    /* WiFi details */
+    .wifi-detail {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 7px 0;
+      border-bottom: 1px solid var(--border);
+      font-size: 0.85rem;
+    }
+    .wifi-detail:last-child { border-bottom: none; }
+    .wifi-label { color: var(--text-secondary); font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.6px; font-weight: 600; }
+    .wifi-value { font-weight: 600; }
+
+    /* =====================================================
+       SECTION: GENERATOR TAB
+    ===================================================== */
+    #generate-panel { padding-bottom: 24px; }
+
+    /* Generator hero strip */
+    .generate-hero {
+      background: var(--gradient-primary);
+      padding: 20px 20px 24px;
+      display: flex;
+      align-items: center;
+      gap: 14px;
+      color: #fff;
+    }
+    .generate-hero .hero-icon {
+      width: 52px;
+      height: 52px;
+      border-radius: 16px;
+      background: rgba(255,255,255,0.15);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 1.8rem;
+      flex-shrink: 0;
+    }
+    .generate-hero h2 { font-size: 1rem; font-weight: 700; margin-bottom: 2px; }
+    .generate-hero p  { font-size: 0.8rem; opacity: 0.8; line-height: 1.4; }
+
+    .form-group {
+      margin-bottom: 14px;
+    }
+
+    .form-label {
+      display: block;
+      font-size: 0.72rem;
+      font-weight: 700;
+      color: var(--text-secondary);
+      margin-bottom: 6px;
+      text-transform: uppercase;
+      letter-spacing: 0.8px;
+    }
+
+    .form-control {
+      width: 100%;
+      padding: 11px 14px;
+      border-radius: var(--radius-sm);
+      border: 1.5px solid var(--border);
+      background: var(--bg);
+      color: var(--text);
+      font-size: 0.93rem;
+      font-family: inherit;
+      transition: border-color var(--transition), box-shadow var(--transition), background var(--transition);
+    }
+    .form-control:focus {
+      border-color: var(--primary);
+      box-shadow: 0 0 0 3px rgba(124,58,237,0.12);
+      background: var(--surface);
+    }
+    .form-control::placeholder { color: var(--text-secondary); opacity: 0.7; }
+
+    select.form-control {
+      appearance: none;
+      cursor: pointer;
+      background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8'%3E%3Cpath d='M1 1l5 5 5-5' stroke='%236B7280' stroke-width='2' fill='none' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
+      background-repeat: no-repeat;
+      background-position: right 14px center;
+      padding-right: 38px;
+    }
+
+    #qr-output {
+      text-align: center;
+      padding: 16px 0 10px;
+    }
+
+    #qr-canvas {
+      border-radius: var(--radius-sm);
+      max-width: 100%;
+      box-shadow: 0 4px 24px rgba(124,58,237,0.15);
+      display: none;
+    }
+
+    #qr-placeholder {
+      width: 190px;
+      height: 190px;
+      margin: 0 auto;
+      border: 2px dashed var(--border);
+      border-radius: var(--radius);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 10px;
+      color: var(--text-secondary);
+      font-size: 0.82rem;
+      background: var(--surface-2);
+      transition: background var(--transition), border-color var(--transition);
+    }
+    #qr-placeholder .ph-icon { font-size: 2.8rem; opacity: 0.5; }
+
+    .qr-actions {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      justify-content: center;
+      margin-top: 16px;
+    }
+
+    /* =====================================================
+       SECTION: HISTORY TAB
+    ===================================================== */
+    #history-panel { padding-bottom: 24px; }
+
+    #history-toolbar {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 12px 16px;
+      position: sticky;
+      top: 0;
+      background: var(--bg);
+      z-index: 10;
+      border-bottom: 1px solid var(--border);
+      transition: background var(--transition);
+    }
+
+    #history-search {
+      flex: 1;
+      padding: 9px 16px;
+      border-radius: 24px;
+      border: 1.5px solid var(--border);
+      background: var(--surface);
+      color: var(--text);
+      font-size: 0.88rem;
+      transition: border-color var(--transition), background var(--transition);
+    }
+    #history-search:focus { border-color: var(--primary); background: var(--bg); box-shadow: 0 0 0 3px rgba(124,58,237,0.1); }
+
+    #history-list { padding: 6px 0; }
+
+    .history-empty {
+      text-align: center;
+      padding: 56px 24px;
+      color: var(--text-secondary);
+    }
+    .history-empty .empty-icon { font-size: 3.5rem; margin-bottom: 14px; opacity: 0.6; }
+    .history-empty p { font-size: 0.9rem; line-height: 1.6; }
+
+    .history-item {
+      display: flex;
+      align-items: center;
+      gap: 14px;
+      padding: 13px 16px;
+      border-bottom: 1px solid var(--border);
+      transition: background var(--transition);
+      cursor: default;
+    }
+    .history-item:hover { background: var(--surface-2); }
+    .history-item:active { background: var(--border); }
+
+    .history-type-icon {
+      width: 42px;
+      height: 42px;
+      border-radius: 13px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 1.1rem;
+      flex-shrink: 0;
+    }
+
+    .history-info { flex: 1; min-width: 0; }
+
+    .history-content {
+      font-size: 0.88rem;
+      font-weight: 500;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      color: var(--text);
+      margin-bottom: 3px;
+    }
+
+    .history-meta {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 0.7rem;
+      color: var(--text-secondary);
+    }
+
+    .history-badge {
+      padding: 2px 8px;
+      border-radius: 20px;
+      font-weight: 700;
+      font-size: 0.62rem;
+      text-transform: uppercase;
+      letter-spacing: 0.4px;
+    }
+
+    .history-delete {
+      width: 32px;
+      height: 32px;
+      border-radius: 10px;
+      background: transparent;
+      color: var(--text-secondary);
+      font-size: 0.85rem;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: all var(--transition);
+      flex-shrink: 0;
+    }
+    .history-delete:hover { background: rgba(239,68,68,0.1); color: var(--error); }
+
+    /* History action bar */
+    #history-actions {
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+      padding: 12px 16px;
+      border-top: 1px solid var(--border);
+      position: sticky;
+      bottom: 0;
+      background: var(--glass-bg);
+      backdrop-filter: blur(12px);
+      -webkit-backdrop-filter: blur(12px);
+    }
+
+    /* =====================================================
+       SECTION: MORE (SETTINGS + ABOUT)
+    ===================================================== */
+    #more-panel { padding-bottom: 32px; }
+
+    /* Settings hero */
+    .settings-hero {
+      background: var(--gradient-primary);
+      padding: 20px;
+      margin-bottom: 4px;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      color: #fff;
+    }
+    .settings-hero .hero-icon {
+      width: 44px;
+      height: 44px;
+      border-radius: 14px;
+      background: rgba(255,255,255,0.15);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 1.5rem;
+    }
+    .settings-hero h2 { font-size: 1rem; font-weight: 700; }
+    .settings-hero p  { font-size: 0.78rem; opacity: 0.8; }
+
+    .settings-section-title {
+      font-size: 0.68rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 1.2px;
+      color: var(--primary);
+      padding: 20px 16px 8px;
+    }
+
+    .settings-group {
+      margin: 0 16px;
+      border-radius: var(--radius);
+      overflow: hidden;
+      box-shadow: var(--card-shadow);
+      border: 1px solid var(--border);
+      background: var(--surface);
+    }
+
+    .settings-item {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 15px 16px;
+      border-bottom: 1px solid var(--border);
+      transition: background var(--transition);
+    }
+    .settings-item:last-child { border-bottom: none; }
+    .settings-item:hover { background: var(--surface-2); }
+
+    .settings-info { display: flex; flex-direction: column; gap: 2px; }
+    .settings-label { font-size: 0.93rem; font-weight: 500; color: var(--text); }
+    .settings-desc { font-size: 0.74rem; color: var(--text-secondary); }
+
+    /* Toggle Switch — refined */
+    .toggle-switch {
+      position: relative;
+      width: 48px;
+      height: 26px;
+      flex-shrink: 0;
+    }
+    .toggle-switch input { display: none; }
+    .toggle-track {
+      position: absolute;
+      inset: 0;
+      border-radius: 13px;
+      background: var(--border);
+      transition: background var(--transition);
+      cursor: pointer;
+    }
+    .toggle-thumb {
+      position: absolute;
+      top: 3px;
+      left: 3px;
+      width: 20px;
+      height: 20px;
+      border-radius: 50%;
+      background: #fff;
+      box-shadow: 0 1px 4px rgba(0,0,0,0.25);
+      transition: transform var(--transition);
+      pointer-events: none;
+    }
+    .toggle-switch input:checked ~ .toggle-track { background: var(--primary); }
+    .toggle-switch input:checked ~ .toggle-thumb { transform: translateX(22px); }
+
+    /* About section */
+    #about-section {
+      margin: 16px;
+      background: var(--surface);
+      border-radius: var(--radius);
+      box-shadow: var(--card-shadow);
+      overflow: hidden;
+      border: 1px solid var(--border);
+    }
+
+    #about-header {
+      background: var(--gradient-hero);
+      padding: 32px 20px;
+      text-align: center;
+      color: #fff;
+      position: relative;
+      overflow: hidden;
+    }
+
+    /* Decorative orbs */
+    #about-header::before {
+      content: '';
+      position: absolute;
+      width: 160px;
+      height: 160px;
+      border-radius: 50%;
+      background: radial-gradient(circle, rgba(124,58,237,0.4) 0%, transparent 70%);
+      top: -40px;
+      left: -40px;
+    }
+    #about-header::after {
+      content: '';
+      position: absolute;
+      width: 120px;
+      height: 120px;
+      border-radius: 50%;
+      background: radial-gradient(circle, rgba(79,70,229,0.3) 0%, transparent 70%);
+      bottom: -20px;
+      right: -20px;
+    }
+
+    .about-logo-wrap {
+      position: relative;
+      z-index: 1;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      width: 72px;
+      height: 72px;
+      border-radius: 24px;
+      background: rgba(255,255,255,0.1);
+      border: 2px solid rgba(255,255,255,0.2);
+      font-size: 2.4rem;
+      margin-bottom: 12px;
+      backdrop-filter: blur(8px);
+    }
+    #about-header .app-name { font-size: 1.3rem; font-weight: 800; position: relative; z-index: 1; }
+    #about-header .app-version { font-size: 0.78rem; opacity: 0.65; margin-top: 4px; position: relative; z-index: 1; letter-spacing: 0.5px; }
+
+    .about-body { padding: 20px; }
+
+    .feature-list { list-style: none; display: grid; gap: 10px; }
+    .feature-list li {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      font-size: 0.88rem;
+      color: var(--text);
+      padding: 2px 0;
+    }
+    .feature-list .feat-icon {
+      width: 24px;
+      height: 24px;
+      border-radius: 6px;
+      background: rgba(16,185,129,0.12);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 0.75rem;
+      flex-shrink: 0;
+    }
+
+    .about-divider { height: 1px; background: var(--border); margin: 18px 0; }
+
+    .dev-credit {
+      text-align: center;
+      font-size: 0.88rem;
+      color: var(--text-secondary);
+      line-height: 1.7;
+    }
+    .dev-credit strong { color: var(--primary); font-weight: 700; }
+    .dev-credit .copyright { font-size: 0.72rem; margin-top: 10px; display: block; opacity: 0.7; }
+
+    /* =====================================================
+       TOAST NOTIFICATIONS
+    ===================================================== */
+    #toast-container {
+      position: fixed;
+      bottom: calc(var(--nav-height) + 16px);
+      left: 50%;
+      transform: translateX(-50%);
+      z-index: 999;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 8px;
+      pointer-events: none;
+      width: 100%;
+      max-width: 340px;
+      padding: 0 16px;
+    }
+
+    .toast {
+      background: rgba(26,16,51,0.9);
+      color: #fff;
+      padding: 11px 18px;
+      border-radius: 12px;
+      font-size: 0.85rem;
+      font-weight: 500;
+      box-shadow: 0 4px 24px rgba(0,0,0,0.2);
+      animation: toastIn 0.3s ease, toastOut 0.3s ease 2.7s forwards;
+      pointer-events: none;
+      max-width: 100%;
+      text-align: center;
+      word-break: break-word;
+      backdrop-filter: blur(12px);
+      border: 1px solid rgba(255,255,255,0.08);
+    }
+
+    .toast.success { background: rgba(5,122,85,0.95); }
+    .toast.error   { background: rgba(185,28,28,0.95); }
+    .toast.info    { background: rgba(124,58,237,0.95); }
+
+    @keyframes toastIn {
+      from { opacity: 0; transform: translateY(16px) scale(0.95); }
+      to   { opacity: 1; transform: translateY(0) scale(1); }
+    }
+    @keyframes toastOut {
+      from { opacity: 1; transform: translateY(0) scale(1); }
+      to   { opacity: 0; transform: translateY(-8px) scale(0.95); }
+    }
+
+    /* =====================================================
+       LOADING SPINNER
+    ===================================================== */
+    .spinner {
+      width: 36px;
+      height: 36px;
+      border: 3px solid rgba(255,255,255,0.15);
+      border-top-color: #A78BFA;
+      border-radius: 50%;
+      animation: spin 0.75s linear infinite;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    .loading-overlay {
+      display: none;
+      position: absolute;
+      inset: 0;
+      background: rgba(0,0,0,0.5);
+      align-items: center;
+      justify-content: center;
+      z-index: 10;
+      backdrop-filter: blur(4px);
+    }
+    .loading-overlay.visible { display: flex; }
+
+    /* =====================================================
+       TYPE COLOR PALETTE
+    ===================================================== */
+    .type-url     { background: rgba(59,130,246,0.12); color: #2563EB; }
+    .type-email   { background: rgba(236,72,153,0.12); color: #DB2777; }
+    .type-phone   { background: rgba(16,185,129,0.12); color: #059669; }
+    .type-wifi    { background: rgba(245,158,11,0.12); color: #D97706; }
+    .type-contact { background: rgba(139,92,246,0.12); color: #7C3AED; }
+    .type-text    { background: rgba(107,114,128,0.12); color: #4B5563; }
+    .type-sms     { background: rgba(6,182,212,0.12);  color: #0891B2; }
+    .type-geo     { background: rgba(239,68,68,0.12);  color: #DC2626; }
+
+    /* =====================================================
+       RESPONSIVE / DESKTOP TWEAKS
+    ===================================================== */
+    @media (min-width: 500px) {
+      #scanner-container { max-height: 55vh; }
+      .viewfinder { width: 56%; }
+    }
+
+    /* Scrollbar styling */
+    ::-webkit-scrollbar { width: 4px; }
+    ::-webkit-scrollbar-track { background: transparent; }
+    ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 4px; }
+    ::-webkit-scrollbar-thumb:hover { background: var(--primary); }
+
+    /* Selection color */
+    ::selection { background: rgba(124,58,237,0.2); }
+
+    /* Safe area insets */
+    @supports (padding: env(safe-area-inset-bottom)) {
+      #bottom-nav {
+        padding-bottom: env(safe-area-inset-bottom);
+        height: calc(var(--nav-height) + env(safe-area-inset-bottom));
+      }
+      #main-content {
+        padding-bottom: calc(var(--nav-height) + env(safe-area-inset-bottom));
+      }
+    }
+  </style>
+</head>
+<body>
+
+<!-- =========================================================
+     APP SHELL
+========================================================= -->
+<div id="app">
+
+  <!-- HEADER -->
+  <header id="app-header">
+    <div id="header-title">
+      <div class="logo-pill">📷</div>
+      QR Scanner
+    </div>
+    <div class="header-actions">
+      <button class="icon-btn" id="dark-mode-btn" title="Toggle dark mode" aria-label="Toggle dark mode">🌙</button>
+    </div>
+  </header>
+
+  <!-- MAIN CONTENT -->
+  <main id="main-content">
+
+    <!-- ===================== SCANNER TAB ===================== -->
+    <div id="scanner-panel" class="tab-panel active" role="tabpanel" aria-label="Scanner">
+
+      <!-- Camera viewfinder -->
+      <div id="scanner-container">
+        <!-- Camera not started yet / error state -->
+        <div id="camera-placeholder">
+          <div class="placeholder-graphic">📷</div>
+          <h2>QR Code Scanner</h2>
+          <p id="camera-msg">Tap the button below to start scanning</p>
+          <button class="btn btn-primary" id="start-scan-btn">▶ Start Camera</button>
+        </div>
+
+        <!-- Live video element -->
+        <video id="scanner-video" playsinline autoplay muted style="display:none;"></video>
+        <canvas id="scanner-canvas"></canvas>
+
+        <!-- Overlay: dark mask + viewfinder -->
+        <div id="scanner-overlay" style="display:none;">
+          <div class="vf-cutout"></div>
+          <div class="viewfinder">
+            <div class="corner corner-tl"></div>
+            <div class="corner corner-tr"></div>
+            <div class="corner corner-bl"></div>
+            <div class="corner corner-br"></div>
+            <div id="scan-line"></div>
+          </div>
+        </div>
+
+        <!-- Camera controls (flash / flip) -->
+        <div id="scanner-controls" style="display:none;">
+          <button class="scanner-ctrl-btn" id="flip-cam-btn" title="Switch camera" aria-label="Switch camera">🔄</button>
+          <button class="scanner-ctrl-btn" id="torch-btn" title="Flashlight" aria-label="Toggle flashlight">🔦</button>
+        </div>
+
+        <!-- Loading overlay -->
+        <div class="loading-overlay" id="cam-loading">
+          <div class="spinner"></div>
+        </div>
+      </div>
+
+      <!-- Scan from image -->
+      <div id="scan-image-section">
+        <label id="scan-image-label" for="scan-image-input">🖼 Scan Image</label>
+        <input type="file" id="scan-image-input" accept="image/*" aria-label="Upload image to scan" />
+        <span id="scan-image-hint">Upload a photo containing a QR code</span>
+      </div>
+
+      <!-- Result card -->
+      <div id="result-section">
+        <div id="result-card">
+          <div class="result-header">
+            <div class="result-type-badge" id="result-badge">📄 Text</div>
+          </div>
+          <div class="result-timestamp" id="result-ts"></div>
+          <div class="result-content" id="result-content"></div>
+          <div id="wifi-details" style="display:none; margin-bottom:12px;"></div>
+          <div class="result-actions" id="result-actions"></div>
+        </div>
+      </div>
+
+    </div><!-- /scanner-panel -->
+
+    <!-- ===================== GENERATE TAB ===================== -->
+    <div id="generate-panel" class="tab-panel" role="tabpanel" aria-label="Generate">
+
+      <div class="generate-hero">
+        <div class="hero-icon">⬜</div>
+        <div>
+          <h2>Generate QR Code</h2>
+          <p>Create QR codes for URLs, WiFi, contacts &amp; more</p>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-title">QR Code Type</div>
+        <div class="form-group">
+          <select class="form-control" id="qr-type" aria-label="QR code type">
+            <option value="text">📝 Plain Text</option>
+            <option value="url">🔗 URL / Website</option>
+            <option value="email">📧 Email</option>
+            <option value="phone">📞 Phone Number</option>
+            <option value="wifi">📶 WiFi Network</option>
+            <option value="contact">👤 Contact Info (vCard)</option>
+          </select>
+        </div>
+
+        <!-- Dynamic fields container -->
+        <div id="qr-fields"></div>
+
+        <button class="btn btn-primary btn-full" id="generate-btn" style="margin-top:4px;">
+          ✨ Generate QR Code
+        </button>
+      </div>
+
+      <!-- QR output -->
+      <div class="card">
+        <div class="card-title">Generated QR Code</div>
+        <div id="qr-output">
+          <div id="qr-placeholder">
+            <div class="ph-icon">⬜</div>
+            <span>QR code will appear here</span>
+          </div>
+          <canvas id="qr-canvas"></canvas>
+        </div>
+        <div class="qr-actions" id="qr-actions" style="display:none;">
+          <button class="btn btn-primary btn-sm" id="download-qr-btn">⬇ Download PNG</button>
+          <button class="btn btn-secondary btn-sm" id="copy-qr-btn">📋 Copy Image</button>
+        </div>
+      </div>
+    </div><!-- /generate-panel -->
+
+    <!-- ===================== HISTORY TAB ===================== -->
+    <div id="history-panel" class="tab-panel" role="tabpanel" aria-label="History">
+      <div id="history-toolbar">
+        <input type="search" id="history-search" placeholder="🔍 Search history…" aria-label="Search scan history" />
+      </div>
+      <div id="history-list" aria-live="polite"></div>
+      <div id="history-actions">
+        <button class="btn btn-icon btn-sm" id="export-json-btn">📤 JSON</button>
+        <button class="btn btn-icon btn-sm" id="export-csv-btn">📊 CSV</button>
+        <button class="btn btn-danger btn-sm" id="clear-history-btn">🗑 Clear All</button>
+      </div>
+    </div><!-- /history-panel -->
+
+    <!-- ===================== MORE TAB ===================== -->
+    <div id="more-panel" class="tab-panel" role="tabpanel" aria-label="Settings & About">
+
+      <div class="settings-hero">
+        <div class="hero-icon">⚙️</div>
+        <div>
+          <h2>Settings</h2>
+          <p>Customise your scanning experience</p>
+        </div>
+      </div>
+
+      <div class="settings-section-title">Appearance</div>
+      <div class="settings-group">
+        <div class="settings-item">
+          <div class="settings-info">
+            <span class="settings-label">🌙 Dark Mode</span>
+            <span class="settings-desc">Switch to dark theme</span>
+          </div>
+          <label class="toggle-switch" aria-label="Dark mode toggle">
+            <input type="checkbox" id="dark-mode-toggle" />
+            <div class="toggle-track"></div>
+            <div class="toggle-thumb"></div>
+          </label>
+        </div>
+      </div>
+
+      <div class="settings-section-title">Scan Behaviour</div>
+      <div class="settings-group">
+        <div class="settings-item">
+          <div class="settings-info">
+            <span class="settings-label">📳 Vibration on Scan</span>
+            <span class="settings-desc">Vibrate device when QR found</span>
+          </div>
+          <label class="toggle-switch" aria-label="Vibration toggle">
+            <input type="checkbox" id="vibration-toggle" checked />
+            <div class="toggle-track"></div>
+            <div class="toggle-thumb"></div>
+          </label>
+        </div>
+        <div class="settings-item">
+          <div class="settings-info">
+            <span class="settings-label">🔊 Sound on Scan</span>
+            <span class="settings-desc">Play beep sound when QR found</span>
+          </div>
+          <label class="toggle-switch" aria-label="Sound toggle">
+            <input type="checkbox" id="sound-toggle" checked />
+            <div class="toggle-track"></div>
+            <div class="toggle-thumb"></div>
+          </label>
+        </div>
+        <div class="settings-item">
+          <div class="settings-info">
+            <span class="settings-label">📋 Auto Copy Result</span>
+            <span class="settings-desc">Copy scan result to clipboard automatically</span>
+          </div>
+          <label class="toggle-switch" aria-label="Auto copy toggle">
+            <input type="checkbox" id="auto-copy-toggle" />
+            <div class="toggle-track"></div>
+            <div class="toggle-thumb"></div>
+          </label>
+        </div>
+        <div class="settings-item">
+          <div class="settings-info">
+            <span class="settings-label">🌐 Auto Open URLs</span>
+            <span class="settings-desc">Automatically open scanned links</span>
+          </div>
+          <label class="toggle-switch" aria-label="Auto open URLs toggle">
+            <input type="checkbox" id="auto-open-toggle" />
+            <div class="toggle-track"></div>
+            <div class="toggle-thumb"></div>
+          </label>
+        </div>
+      </div>
+
+      <!-- About section -->
+      <div class="settings-section-title">About</div>
+      <div id="about-section">
+        <div id="about-header">
+          <div class="about-logo-wrap">📷</div>
+          <div class="app-name">QR Scanner</div>
+          <div class="app-version">Version 2.0.0</div>
+        </div>
+        <div class="about-body">
+          <ul class="feature-list">
+            <li><span class="feat-icon">✅</span> Scan QR codes with device camera</li>
+            <li><span class="feat-icon">✅</span> Scan QR from uploaded images</li>
+            <li><span class="feat-icon">✅</span> Generate QR codes for any content</li>
+            <li><span class="feat-icon">✅</span> Smart detection (URL, WiFi, Email…)</li>
+            <li><span class="feat-icon">✅</span> Full scan history with search</li>
+            <li><span class="feat-icon">✅</span> Export history as JSON or CSV</li>
+            <li><span class="feat-icon">✅</span> Dark mode support</li>
+            <li><span class="feat-icon">✅</span> Works offline (PWA)</li>
+            <li><span class="feat-icon">✅</span> No sign-up required</li>
+          </ul>
+
+          <div class="about-divider"></div>
+          <p class="settings-desc" style="text-align:center;line-height:1.6;margin-bottom:14px;">
+            Your scan history and preferences are stored locally in this browser. QR contents are not sent to a server by this app.
+          </p>
+
+          <div class="dev-credit">
+            Created &amp; developed with ❤️ by <strong>Nabid</strong>
+            <br />
+            <a href="https://github.com/nabid819/Simple-QR-Code-Scanner" target="_blank" rel="noopener">
+              🔗 GitHub Repository
+            </a>
+            <span class="copyright">© 2026 Nabid · QR Scanner</span>
+          </div>
+        </div>
+      </div>
+
+    </div><!-- /more-panel -->
+
+  </main><!-- /main-content -->
+
+  <!-- BOTTOM NAVIGATION -->
+  <nav id="bottom-nav" role="navigation" aria-label="Main navigation">
+    <button class="nav-item active" data-tab="scanner" aria-label="Scanner tab" aria-selected="true">
+      <div class="nav-icon-wrap"><span class="nav-icon">📷</span></div>
+      <span>Scanner</span>
+    </button>
+    <button class="nav-item" data-tab="generate" aria-label="Generate tab" aria-selected="false">
+      <div class="nav-icon-wrap"><span class="nav-icon">⬜</span></div>
+      <span>Generate</span>
+    </button>
+    <button class="nav-item" data-tab="history" aria-label="History tab" aria-selected="false">
+      <div class="nav-icon-wrap"><span class="nav-icon">📋</span></div>
+      <span>History</span>
+    </button>
+    <button class="nav-item" data-tab="more" aria-label="More tab" aria-selected="false">
+      <div class="nav-icon-wrap"><span class="nav-icon">⚙️</span></div>
+      <span>More</span>
+    </button>
+  </nav>
+
+</div><!-- /app -->
+
+<!-- TOAST CONTAINER -->
+<div id="toast-container" aria-live="assertive" aria-atomic="true"></div>
+
+<!-- =========================================================
+     JAVASCRIPT
+========================================================= -->
+<script>
+/* ============================================================
+   SECTION 1: STATE & CONSTANTS
+============================================================ */
+const MAX_HISTORY = 100;
+const DB_KEY_HISTORY  = 'qrpro_history';
+const DB_KEY_SETTINGS = 'qrpro_settings';
+
+const DEFAULT_SETTINGS = {
+  darkMode:    false,
+  vibration:   true,
+  sound:       true,
+  autoCopy:    false,
+  autoOpenUrl: false,
+};
+
+let settings     = { ...DEFAULT_SETTINGS };
+let history      = [];
+let currentTab   = 'scanner';
+
+// Scanner state
+let videoStream      = null;
+let scanLoop         = null;
+let scanPaused       = false;
+let torchEnabled     = false;
+let facingMode       = 'environment';
+let lastScannedCode  = null;
+
+/* ============================================================
+   SECTION 2: UTILITY FUNCTIONS
+============================================================ */
+
+function saveSettings() {
+  try { localStorage.setItem(DB_KEY_SETTINGS, JSON.stringify(settings)); } catch (error) { console.warn('Could not save settings:', error); }
+}
+
+function loadSettings() {
+  try {
+    const stored = JSON.parse(localStorage.getItem(DB_KEY_SETTINGS));
+    if (stored) settings = { ...DEFAULT_SETTINGS, ...stored };
+  } catch (_) {}
+}
+
+function saveHistory() {
+  try { localStorage.setItem(DB_KEY_HISTORY, JSON.stringify(history)); } catch (error) { console.warn('Could not save history:', error); }
+}
+
+function loadHistory() {
+  try {
+    const stored = JSON.parse(localStorage.getItem(DB_KEY_HISTORY));
+    if (Array.isArray(stored)) history = stored;
+  } catch (_) {}
+}
+
+function addHistory(content, type) {
+  const now = Date.now();
+  if (history.length > 0) {
+    const last = history[0];
+    if (last.content === content && now - last.timestamp < 60000) return;
+  }
+  history.unshift({ id: now + '-' + Math.random().toString(36).slice(2), content, type, timestamp: now });
+  if (history.length > MAX_HISTORY) history = history.slice(0, MAX_HISTORY);
+  saveHistory();
+  renderHistory();
+}
+
+function formatTime(ts) {
+  const now  = Date.now();
+  const diff = now - ts;
+  const mins  = Math.floor(diff / 60000);
+  const hours = Math.floor(diff / 3600000);
+  const days  = Math.floor(diff / 86400000);
+
+  if (mins < 1)   return 'Just now';
+  if (mins < 60)  return `${mins}m ago`;
+  if (hours < 24) return `${hours}h ago`;
+  if (days === 1) {
+    const d = new Date(ts);
+    return 'Yesterday ' + d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+  }
+  if (days < 7)   return `${days}d ago`;
+  return new Date(ts).toLocaleDateString([], { day: 'numeric', month: 'short', year: 'numeric' });
+}
+
+function showToast(message, type = '', duration = 3000) {
+  const container = document.getElementById('toast-container');
+  const toast = document.createElement('div');
+  toast.className = `toast ${type}`;
+  toast.textContent = message;
+  container.appendChild(toast);
+  setTimeout(() => { toast.remove(); }, duration);
+}
+
+async function copyToClipboard(text) {
+  try {
+    if (navigator.clipboard && window.isSecureContext) {
+      await navigator.clipboard.writeText(text);
+    } else {
+      const ta = document.createElement('textarea');
+      ta.value = text;
+      ta.style.cssText = 'position:fixed;left:-9999px;top:0';
+      document.body.appendChild(ta);
+      ta.select();
+      document.execCommand('copy');
+      ta.remove();
+    }
+    showToast('📋 Copied to clipboard!', 'success');
+  } catch (_) {
+    showToast('❌ Could not copy', 'error');
+  }
+}
+
+function downloadFile(filename, content, mimeType) {
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(new Blob([content], { type: mimeType }));
+  a.download = filename;
+  a.click();
+  setTimeout(() => URL.revokeObjectURL(a.href), 1000);
+}
+
+function playBeep() {
+  if (!settings.sound) return;
+  try {
+    const ctx  = new (window.AudioContext || window.webkitAudioContext)();
+    const osc  = ctx.createOscillator();
+    const gain = ctx.createGain();
+    osc.connect(gain);
+    gain.connect(ctx.destination);
+    osc.frequency.value = 1200;
+    osc.type = 'sine';
+    gain.gain.setValueAtTime(0.3, ctx.currentTime);
+    gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.25);
+    osc.start(ctx.currentTime);
+    osc.stop(ctx.currentTime + 0.25);
+    ctx.close();
+  } catch (_) {}
+}
+
+function vibrate() {
+  if (!settings.vibration) return;
+  if ('vibrate' in navigator) navigator.vibrate([100, 30, 100]);
+}
+
+function escapeHtml(str) {
+  return String(str)
+    .replace(/&/g,'&amp;')
+    .replace(/</g,'&lt;')
+    .replace(/>/g,'&gt;')
+    .replace(/"/g,'&quot;');
+}
+
+/* ============================================================
+   SECTION 3: QR CODE TYPE DETECTION
+============================================================ */
+
+const TYPE_MAP = {
+  url:     { label: '🔗 URL',      badge: 'type-url',     icon: '🔗', color: '#2563EB' },
+  email:   { label: '📧 Email',    badge: 'type-email',   icon: '📧', color: '#DB2777' },
+  phone:   { label: '📞 Phone',    badge: 'type-phone',   icon: '📞', color: '#059669' },
+  wifi:    { label: '📶 WiFi',     badge: 'type-wifi',    icon: '📶', color: '#D97706' },
+  contact: { label: '👤 Contact',  badge: 'type-contact', icon: '👤', color: '#7C3AED' },
+  sms:     { label: '💬 SMS',      badge: 'type-sms',     icon: '💬', color: '#0891B2' },
+  geo:     { label: '📍 Location', badge: 'type-geo',     icon: '📍', color: '#DC2626' },
+  text:    { label: '📄 Text',     badge: 'type-text',    icon: '📄', color: '#4B5563' },
+};
+
+function detectType(content) {
+  if (!content) return 'text';
+  const c = content.trim();
+  if (/^https?:\/\//i.test(c))                      return 'url';
+  if (/^mailto:/i.test(c) || /^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(c)) return 'email';
+  if (/^tel:/i.test(c) || /^\+?[\d\s\-().]{7,}$/.test(c))          return 'phone';
+  if (/^WIFI:/i.test(c))                             return 'wifi';
+  if (/^BEGIN:VCARD/i.test(c))                       return 'contact';
+  if (/^smsto?:/i.test(c))                           return 'sms';
+  if (/^geo:/i.test(c))                              return 'geo';
+  return 'text';
+}
+
+function parseWifi(content) {
+  const result = { ssid: '', password: '', security: '', hidden: false };
+  const matches = content.match(/([TSPH]):([^;]*)/g) || [];
+  matches.forEach((m) => {
+    const [key, ...rest] = m.split(':');
+    const val = rest.join(':');
+    if (key === 'T') result.security = val;
+    if (key === 'S') result.ssid     = val;
+    if (key === 'P') result.password = val;
+    if (key === 'H') result.hidden   = val === 'true';
+  });
+  return result;
+}
+
+function buildResultActions(content, type) {
+  const container = document.getElementById('result-actions');
+  const wifiDiv   = document.getElementById('wifi-details');
+  container.innerHTML = '';
+  wifiDiv.style.display = 'none';
+  wifiDiv.innerHTML = '';
+
+  const addBtn = (label, onClick, variant = 'btn-primary') => {
+    const btn = document.createElement('button');
+    btn.className = `btn ${variant} btn-sm`;
+    btn.innerHTML = label;
+    btn.addEventListener('click', onClick);
+    container.appendChild(btn);
+  };
+
+  addBtn('📋 Copy', () => copyToClipboard(content), 'btn-secondary');
+  addBtn('🔄 Rescan', () => {
+    document.getElementById('result-card').classList.remove('visible');
+    lastScannedCode = null;
+    scanPaused = false;
+    resumeScanLoop();
+  });
+
+  switch (type) {
+    case 'url':
+      addBtn('🌐 Open Link', () => window.open(content, '_blank', 'noopener,noreferrer'));
+      break;
+    case 'email': {
+      const addr = content.replace(/^mailto:/i, '');
+      addBtn('📧 Send Email', () => window.open('mailto:' + addr));
+      break;
+    }
+    case 'phone': {
+      const num = content.replace(/^tel:/i, '');
+      addBtn('📞 Call', () => window.open('tel:' + num));
+      addBtn('💬 SMS', () => window.open('sms:' + num));
+      break;
+    }
+    case 'wifi': {
+      const wifi = parseWifi(content);
+      wifiDiv.style.display = 'block';
+      [
+        { label: 'Network (SSID)', value: wifi.ssid     || '—' },
+        { label: 'Security',       value: wifi.security || 'None' },
+        { label: 'Password',       value: wifi.password || '—' },
+        { label: 'Hidden',         value: wifi.hidden ? 'Yes' : 'No' },
+      ].forEach(({ label, value }) => {
+        const row = document.createElement('div');
+        row.className = 'wifi-detail';
+        row.innerHTML = `<span class="wifi-label">${label}</span><span class="wifi-value">${escapeHtml(value)}</span>`;
+        wifiDiv.appendChild(row);
+      });
+      if (wifi.password) addBtn('🔑 Copy Password', () => copyToClipboard(wifi.password));
+      break;
+    }
+    case 'sms': {
+      const smsMatch = content.match(/^smsto?:([^:]*):?(.*)/i);
+      const num = smsMatch ? smsMatch[1] : content;
+      addBtn('💬 Send SMS', () => window.open('sms:' + num));
+      break;
+    }
+    case 'geo':
+      addBtn('📍 Open Map', () => {
+        const coords = content.replace(/^geo:/i, '').split('?')[0];
+        window.open('https://maps.google.com/?q=' + coords, '_blank', 'noopener');
+      });
+      break;
+    case 'contact':
+      addBtn('👤 Save Contact', () => {
+        const blob = new Blob([content], { type: 'text/vcard' });
+        const url  = URL.createObjectURL(blob);
+        const a    = document.createElement('a');
+        a.href = url; a.download = 'contact.vcf'; a.click();
+        setTimeout(() => URL.revokeObjectURL(url), 1000);
+      });
+      break;
+  }
+
+  if (type === 'url' && settings.autoOpenUrl) {
+    setTimeout(() => window.open(content, '_blank', 'noopener,noreferrer'), 500);
+  }
+  if (settings.autoCopy) copyToClipboard(content);
+}
+
+/* ============================================================
+   SECTION 4: SCANNER
+============================================================ */
+
+const videoEl    = document.getElementById('scanner-video');
+const canvasEl   = document.getElementById('scanner-canvas');
+const overlayEl  = document.getElementById('scanner-overlay');
+const ctrlsEl    = document.getElementById('scanner-controls');
+const torchBtn   = document.getElementById('torch-btn');
+const flipBtn    = document.getElementById('flip-cam-btn');
+const startBtn   = document.getElementById('start-scan-btn');
+const placeholder= document.getElementById('camera-placeholder');
+const camLoading = document.getElementById('cam-loading');
+const resultCard = document.getElementById('result-card');
+const camMsg     = document.getElementById('camera-msg');
+const appHeader  = document.getElementById('app-header');
+
+async function startCamera() {
+  if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+    const msg = window.isSecureContext
+      ? 'Camera access is not supported by this browser.'
+      : 'Camera access requires HTTPS. Open this site using its secure Vercel URL.';
+    camMsg.textContent = msg;
+    showToast('⚠️ ' + msg, 'error', 5000);
+    return;
+  }
+  if (typeof window.jsQR !== 'function') {
+    const msg = 'The QR scanning library could not be loaded. Please refresh while online.';
+    camMsg.textContent = msg;
+    showToast('❌ ' + msg, 'error', 5000);
+    return;
+  }
+
+  if (videoStream) stopCamera();
+  camLoading.classList.add('visible');
+  startBtn.disabled = true;
+
+  const constraints = {
+    video: { facingMode, width: { ideal: 1280 }, height: { ideal: 720 } },
+    audio: false,
+  };
+
+  try {
+    try {
+      videoStream = await navigator.mediaDevices.getUserMedia(constraints);
+    } catch (firstError) {
+      if (!['OverconstrainedError', 'ConstraintNotSatisfiedError'].includes(firstError.name)) throw firstError;
+      videoStream = await navigator.mediaDevices.getUserMedia({ video: true, audio: false });
+    }
+
+    videoEl.srcObject = videoStream;
+    await videoEl.play();
+    videoEl.style.display = 'block';
+    placeholder.style.display = 'none';
+    overlayEl.style.display = 'flex';
+    ctrlsEl.style.display = 'flex';
+    appHeader.classList.add('scanner-active');
+    camMsg.textContent = 'Point your camera at a QR code.';
+    camLoading.classList.remove('visible');
+    lastScannedCode = null;
+    scanPaused = false;
+    resumeScanLoop();
+  } catch (err) {
+    if (videoStream) videoStream.getTracks().forEach((track) => track.stop());
+    videoStream = null;
+    videoEl.srcObject = null;
+    videoEl.style.display = 'none';
+    overlayEl.style.display = 'none';
+    ctrlsEl.style.display = 'none';
+    placeholder.style.display = 'flex';
+    appHeader.classList.remove('scanner-active');
+    camLoading.classList.remove('visible');
+    startBtn.disabled = false;
+
+    let msg = 'Could not access the camera. Please check your browser permissions.';
+    if (err.name === 'NotAllowedError' || err.name === 'PermissionDeniedError') {
+      msg = 'Camera permission denied. Allow camera access in your browser settings and try again.';
+    } else if (err.name === 'NotFoundError' || err.name === 'DevicesNotFoundError') {
+      msg = 'No camera was found on this device.';
+    } else if (err.name === 'NotReadableError' || err.name === 'TrackStartError') {
+      msg = 'The camera is busy. Close other apps using the camera and try again.';
+    } else if (!window.isSecureContext) {
+      msg = 'Camera access requires HTTPS. Open this site using its secure Vercel URL.';
+    }
+    camMsg.textContent = msg;
+    showToast('❌ ' + msg, 'error', 5000);
+  }
+}
+function stopScanLoop() {
+  if (scanLoop !== null) {
+    cancelAnimationFrame(scanLoop);
+    scanLoop = null;
+  }
+}
+
+function resumeScanLoop() {
+  if (videoStream && !scanPaused && !document.hidden && currentTab === 'scanner' && scanLoop === null) {
+    scanLoop = requestAnimationFrame(tick);
+  }
+}
+
+function stopCamera() {
+  stopScanLoop();
+  scanPaused = true;
+  if (videoStream) {
+    videoStream.getTracks().forEach((t) => t.stop());
+    videoStream = null;
+  }
+  videoEl.style.display = 'none';
+  videoEl.srcObject = null;
+  overlayEl.style.display = 'none';
+  ctrlsEl.style.display = 'none';
+  placeholder.style.display = 'flex';
+  appHeader.classList.remove('scanner-active');
+  startBtn.disabled = false;
+  torchEnabled = false;
+  torchBtn.classList.remove('active');
+}
+
+function tick() {
+  scanLoop = null;
+  if (!videoStream || scanPaused || document.hidden || currentTab !== 'scanner') return;
+
+  if (videoEl.readyState === videoEl.HAVE_ENOUGH_DATA && videoEl.videoWidth && videoEl.videoHeight) {
+    const w = videoEl.videoWidth;
+    const h = videoEl.videoHeight;
+    canvasEl.width = w;
+    canvasEl.height = h;
+    const ctx = canvasEl.getContext('2d', { willReadFrequently: true });
+    if (ctx) {
+      ctx.drawImage(videoEl, 0, 0, w, h);
+      const imageData = ctx.getImageData(0, 0, w, h);
+      const code = window.jsQR(imageData.data, imageData.width, imageData.height, { inversionAttempts: 'dontInvert' });
+      if (code && code.data && code.data !== lastScannedCode) {
+        lastScannedCode = code.data;
+        scanPaused = true;
+        handleScanResult(code.data);
+      }
+    }
+  }
+
+  if (!scanPaused) scanLoop = requestAnimationFrame(tick);
+}
+function handleScanResult(content) {
+  scanPaused = true;
+  stopScanLoop();
+  lastScannedCode = content;
+  playBeep();
+  vibrate();
+
+  const type = detectType(content);
+  const info = TYPE_MAP[type] || TYPE_MAP.text;
+
+  document.getElementById('result-badge').className = `result-type-badge ${info.badge}`;
+  document.getElementById('result-badge').textContent = info.label;
+  document.getElementById('result-content').textContent = content;
+  document.getElementById('result-ts').textContent = 'Scanned ' + formatTime(Date.now());
+  buildResultActions(content, type);
+  resultCard.classList.add('visible');
+
+  addHistory(content, type);
+  showToast('✅ QR code scanned!', 'success');
+  resultCard.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+}
+
+async function toggleTorch() {
+  if (!videoStream) return;
+  const track = videoStream.getVideoTracks()[0];
+  const caps  = track.getCapabilities ? track.getCapabilities() : {};
+  if (!caps.torch) { showToast('⚠️ Flashlight not supported on this device', '', 3000); return; }
+  torchEnabled = !torchEnabled;
+  try {
+    await track.applyConstraints({ advanced: [{ torch: torchEnabled }] });
+    torchBtn.classList.toggle('active', torchEnabled);
+    showToast(torchEnabled ? '🔦 Flashlight ON' : '🔦 Flashlight OFF');
+  } catch (_) {
+    showToast('❌ Could not toggle flashlight', 'error');
+    torchEnabled = !torchEnabled;
+  }
+}
+
+async function flipCamera() {
+  facingMode   = facingMode === 'environment' ? 'user' : 'environment';
+  torchEnabled = false;
+  torchBtn.classList.remove('active');
+  await startCamera();
+}
+
+function scanFromImage(file) {
+  if (!file) return;
+  if (!file.type.startsWith('image/')) {
+    showToast('⚠️ Please select an image file.', 'error');
+    return;
+  }
+  if (file.size > 15 * 1024 * 1024) {
+    showToast('⚠️ Please choose an image smaller than 15 MB.', 'error');
+    return;
+  }
+  if (typeof window.jsQR !== 'function') {
+    showToast('❌ QR scanning library is unavailable. Refresh the page and try again.', 'error', 5000);
+    return;
+  }
+
+  const reader = new FileReader();
+  reader.onerror = () => showToast('❌ Could not read the selected image.', 'error');
+  reader.onload = (e) => {
+    const img = new Image();
+    img.onerror = () => showToast('❌ Could not open the selected image.', 'error');
+    img.onload = () => {
+      const tempCanvas = document.createElement('canvas');
+      const maxSide = 3000;
+      const scale = Math.min(1, maxSide / Math.max(img.naturalWidth, img.naturalHeight));
+      tempCanvas.width = Math.max(1, Math.round(img.naturalWidth * scale));
+      tempCanvas.height = Math.max(1, Math.round(img.naturalHeight * scale));
+      const ctx = tempCanvas.getContext('2d', { willReadFrequently: true });
+      if (!ctx) {
+        showToast('❌ Image processing is unavailable in this browser.', 'error');
+        return;
+      }
+      ctx.drawImage(img, 0, 0);
+      const imageData = ctx.getImageData(0, 0, tempCanvas.width, tempCanvas.height);
+      const code = window.jsQR(imageData.data, imageData.width, imageData.height, { inversionAttempts: 'attemptBoth' });
+      if (code && code.data) {
+        handleScanResult(code.data);
+        switchTab('scanner');
+      } else {
+        showToast('❌ No QR code found in image.', 'error');
+      }
+    };
+    img.src = e.target.result;
+  };
+  reader.readAsDataURL(file);
+}
+startBtn.addEventListener('click', startCamera);
+torchBtn.addEventListener('click', toggleTorch);
+flipBtn.addEventListener('click',  flipCamera);
+
+document.getElementById('scan-image-input').addEventListener('change', (e) => {
+  if (e.target.files && e.target.files[0]) {
+    scanFromImage(e.target.files[0]);
+    e.target.value = '';
+  }
+});
+
+/* ============================================================
+   SECTION 5: QR CODE GENERATOR
+============================================================ */
+
+const QR_FIELD_TEMPLATES = {
+  text: `
+    <div class="form-group">
+      <label class="form-label" for="f-text">Text Content</label>
+      <textarea class="form-control" id="f-text" rows="3" placeholder="Enter any text…"></textarea>
+    </div>`,
+  url: `
+    <div class="form-group">
+      <label class="form-label" for="f-url">Website URL</label>
+      <input class="form-control" type="url" id="f-url" placeholder="https://example.com" />
+    </div>`,
+  email: `
+    <div class="form-group">
+      <label class="form-label" for="f-email">Email Address</label>
+      <input class="form-control" type="email" id="f-email" placeholder="user@example.com" />
+    </div>
+    <div class="form-group">
+      <label class="form-label" for="f-subject">Subject (optional)</label>
+      <input class="form-control" type="text" id="f-subject" placeholder="Hello there" />
+    </div>
+    <div class="form-group">
+      <label class="form-label" for="f-body">Message (optional)</label>
+      <textarea class="form-control" id="f-body" rows="2" placeholder="Your message…"></textarea>
+    </div>`,
+  phone: `
+    <div class="form-group">
+      <label class="form-label" for="f-phone">Phone Number</label>
+      <input class="form-control" type="tel" id="f-phone" placeholder="+1 234 567 8900" />
+    </div>`,
+  wifi: `
+    <div class="form-group">
+      <label class="form-label" for="f-ssid">Network Name (SSID)</label>
+      <input class="form-control" type="text" id="f-ssid" placeholder="My WiFi Network" />
+    </div>
+    <div class="form-group">
+      <label class="form-label" for="f-pass">Password</label>
+      <input class="form-control" type="text" id="f-pass" placeholder="••••••••" />
+    </div>
+    <div class="form-group">
+      <label class="form-label" for="f-sec">Security Type</label>
+      <select class="form-control" id="f-sec">
+        <option value="WPA">WPA/WPA2</option>
+        <option value="WEP">WEP</option>
+        <option value="">None (open)</option>
+      </select>
+    </div>
+    <div class="form-group" style="display:flex;align-items:center;gap:10px;">
+      <label class="toggle-switch" aria-label="Hidden network">
+        <input type="checkbox" id="f-hidden" />
+        <div class="toggle-track"></div>
+        <div class="toggle-thumb"></div>
+      </label>
+      <span style="font-size:0.9rem;color:var(--text);">Hidden network</span>
+    </div>`,
+  contact: `
+    <div class="form-group">
+      <label class="form-label" for="f-fn">Full Name</label>
+      <input class="form-control" type="text" id="f-fn" placeholder="John Doe" />
+    </div>
+    <div class="form-group">
+      <label class="form-label" for="f-org">Organization (optional)</label>
+      <input class="form-control" type="text" id="f-org" placeholder="Acme Corp" />
+    </div>
+    <div class="form-group">
+      <label class="form-label" for="f-cphone">Phone</label>
+      <input class="form-control" type="tel" id="f-cphone" placeholder="+1 234 567 8900" />
+    </div>
+    <div class="form-group">
+      <label class="form-label" for="f-cemail">Email</label>
+      <input class="form-control" type="email" id="f-cemail" placeholder="john@example.com" />
+    </div>
+    <div class="form-group">
+      <label class="form-label" for="f-web">Website (optional)</label>
+      <input class="form-control" type="url" id="f-web" placeholder="https://johndoe.com" />
+    </div>`,
+};
+
+function g(id) { return document.getElementById(id); }
+
+function escapeWifiValue(value) {
+  return String(value).replace(/([\\;,:\"])/g, '\\$1');
+}
+
+function escapeVCardValue(value) {
+  return String(value).replace(/\\/g, '\\\\').replace(/\n/g, '\\n').replace(/,/g, '\\,').replace(/;/g, '\\;');
+}
+
+function buildQrContent(type) {
+  switch (type) {
+    case 'text':
+      return (g('f-text')?.value || '').trim();
+    case 'url': {
+      let value = (g('f-url')?.value || '').trim();
+      if (!value) return '';
+      if (!/^https?:\/\//i.test(value)) value = 'https://' + value;
+      try {
+        const parsed = new URL(value);
+        return ['http:', 'https:'].includes(parsed.protocol) ? parsed.href : '';
+      } catch (_) { return ''; }
+    }
+    case 'phone': {
+      const phone = (g('f-phone')?.value || '').trim();
+      return phone ? 'tel:' + phone : '';
+    }
+    case 'email': {
+      const email = (g('f-email')?.value || '').trim();
+      if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)) return '';
+      let str = 'mailto:' + email;
+      const sub = (g('f-subject')?.value || '').trim();
+      const body = (g('f-body')?.value || '').trim();
+      const params = [];
+      if (sub) params.push('subject=' + encodeURIComponent(sub));
+      if (body) params.push('body=' + encodeURIComponent(body));
+      if (params.length) str += '?' + params.join('&');
+      return str;
+    }
+    case 'wifi': {
+      const ssid = (g('f-ssid')?.value || '').trim();
+      const pass = (g('f-pass')?.value || '').trim();
+      const sec = g('f-sec')?.value || 'nopass';
+      const hid = g('f-hidden')?.checked ? 'true' : 'false';
+      if (!ssid || (sec !== 'nopass' && !pass)) return '';
+      const passwordPart = sec === 'nopass' ? '' : `P:${escapeWifiValue(pass)};`;
+      return `WIFI:T:${sec};S:${escapeWifiValue(ssid)};${passwordPart}H:${hid};;`;
+    }
+    case 'contact': {
+      const fn = (g('f-fn')?.value || '').trim();
+      const org = (g('f-org')?.value || '').trim();
+      const tel = (g('f-cphone')?.value || '').trim();
+      const em = (g('f-cemail')?.value || '').trim();
+      const url = (g('f-web')?.value || '').trim();
+      if (!fn) return '';
+      let vcard = 'BEGIN:VCARD\nVERSION:3.0\n';
+      vcard += `FN:${escapeVCardValue(fn)}\nN:${escapeVCardValue(fn)};;;;\n`;
+      if (org) vcard += `ORG:${escapeVCardValue(org)}\n`;
+      if (tel) vcard += `TEL:${escapeVCardValue(tel)}\n`;
+      if (em) vcard += `EMAIL:${escapeVCardValue(em)}\n`;
+      if (url) vcard += `URL:${escapeVCardValue(url)}\n`;
+      vcard += 'END:VCARD';
+      return vcard;
+    }
+    default:
+      return '';
+  }
+}
+function renderQrFields() {
+  const type = document.getElementById('qr-type').value;
+  document.getElementById('qr-fields').innerHTML = QR_FIELD_TEMPLATES[type] || QR_FIELD_TEMPLATES.text;
+}
+
+function generateQr() {
+  const type = document.getElementById('qr-type').value;
+  const content = buildQrContent(type);
+  if (!content) {
+    const message = type === 'url'
+      ? 'Please enter a valid website address.'
+      : type === 'email'
+        ? 'Please enter a valid email address.'
+        : 'Please complete the required fields.';
+    showToast('⚠️ ' + message, 'error', 3500);
+    return;
+  }
+  if (!window.QRCode || typeof window.QRCode.toCanvas !== 'function') {
+    showToast('❌ QR generator library is unavailable. Refresh the page and try again.', 'error', 5000);
+    return;
+  }
+
+  const canvas      = document.getElementById('qr-canvas');
+  const qrPlaceholder = document.getElementById('qr-placeholder');
+
+  QRCode.toCanvas(canvas, content, {
+    width: 256,
+    margin: 2,
+    color: { dark: '#1A1033', light: '#FFFFFF' },
+    errorCorrectionLevel: 'M',
+  }, (err) => {
+    if (err) { showToast('❌ Failed to generate QR code', 'error'); return; }
+    qrPlaceholder.style.display = 'none';
+    canvas.style.display = 'block';
+    document.getElementById('qr-actions').style.display = 'flex';
+    showToast('✅ QR code generated!', 'success');
+  });
+}
+
+function downloadQr() {
+  const canvas = document.getElementById('qr-canvas');
+  if (!canvas.width) { showToast('⚠️ Generate a QR code first', '', 3000); return; }
+  const a = document.createElement('a');
+  a.href     = canvas.toDataURL('image/png');
+  a.download = 'qrcode-' + Date.now() + '.png';
+  a.click();
+  showToast('⬇ QR code downloaded!', 'success');
+}
+
+async function copyQrToClipboard() {
+  const canvas = document.getElementById('qr-canvas');
+  if (!canvas.width) { showToast('⚠️ Generate a QR code first', '', 3000); return; }
+  canvas.toBlob(async (blob) => {
+    try {
+      await navigator.clipboard.write([new ClipboardItem({ 'image/png': blob })]);
+      showToast('📋 QR image copied!', 'success');
+    } catch (_) {
+      showToast('❌ Clipboard image copy not supported', 'error');
+    }
+  });
+}
+
+document.getElementById('qr-type').addEventListener('change', renderQrFields);
+document.getElementById('generate-btn').addEventListener('click', generateQr);
+document.getElementById('download-qr-btn').addEventListener('click', downloadQr);
+document.getElementById('copy-qr-btn').addEventListener('click', copyQrToClipboard);
+
+renderQrFields();
+
+/* ============================================================
+   SECTION 6: HISTORY
+============================================================ */
+
+function renderHistory(filter = '') {
+  const list   = document.getElementById('history-list');
+  const query  = filter.toLowerCase().trim();
+  const filtered = query
+    ? history.filter((e) => e.content.toLowerCase().includes(query) || e.type.includes(query))
+    : history;
+
+  if (filtered.length === 0) {
+    list.innerHTML = `
+      <div class="history-empty">
+        <div class="empty-icon">${query ? '🔍' : '📋'}</div>
+        <p>${query ? 'No results for "' + escapeHtml(query) + '"' : 'No scan history yet.\nStart scanning to see results here!'}</p>
+      </div>`;
+    return;
+  }
+
+  list.innerHTML = filtered.map((entry) => {
+    const info     = TYPE_MAP[entry.type] || TYPE_MAP.text;
+    const truncated = entry.content.length > 60 ? entry.content.slice(0, 57) + '…' : entry.content;
+    return `
+      <div class="history-item" data-id="${escapeHtml(entry.id)}">
+        <div class="history-type-icon ${info.badge}">
+          ${info.icon}
+        </div>
+        <div class="history-info">
+          <div class="history-content" title="${escapeHtml(entry.content)}">${escapeHtml(truncated)}</div>
+          <div class="history-meta">
+            <span class="history-badge ${info.badge}">${info.label}</span>
+            <span>${formatTime(entry.timestamp)}</span>
+          </div>
+        </div>
+        <button class="history-delete" type="button" aria-label="Delete entry" data-delete-id="${escapeHtml(entry.id)}">✕</button>
+      </div>`;
+  }).join('');
+
+  list.querySelectorAll('.history-delete').forEach((button) => {
+    button.addEventListener('click', (event) => {
+      event.stopPropagation();
+      deleteHistoryEntry(button.dataset.deleteId);
+    });
+  });
+  list.querySelectorAll('.history-item').forEach((item) => {
+    item.addEventListener('click', () => {
+      const entry = history.find((h) => h.id === item.dataset.id);
+      if (entry) copyToClipboard(entry.content);
+    });
+  });
+}
+
+function deleteHistoryEntry(id) {
+  history = history.filter((e) => e.id !== id);
+  saveHistory();
+  renderHistory(document.getElementById('history-search').value);
+  showToast('🗑 Entry deleted');
+}
+
+function clearAllHistory() {
+  if (!confirm('Clear all scan history? This cannot be undone.')) return;
+  history = [];
+  saveHistory();
+  renderHistory();
+  showToast('🗑 History cleared');
+}
+
+function exportJson() {
+  if (!history.length) { showToast('⚠️ No history to export', '', 3000); return; }
+  downloadFile('qr-history-' + Date.now() + '.json', JSON.stringify(history, null, 2), 'application/json');
+  showToast('📤 Exported as JSON', 'success');
+}
+
+function exportCsv() {
+  if (!history.length) { showToast('⚠️ No history to export', '', 3000); return; }
+  const csvEscape = (value) => '"' + String(value ?? '').replace(/"/g, '""') + '"';
+  const rows = [['ID', 'Type', 'Content', 'Timestamp', 'Date']];
+  history.forEach((entry) => {
+    rows.push([entry.id, entry.type, entry.content, entry.timestamp, new Date(entry.timestamp).toISOString()]);
+  });
+  const csv = rows.map((row) => row.map(csvEscape).join(',')).join('\r\n');
+  downloadFile('qr-history-' + Date.now() + '.csv', '\uFEFF' + csv, 'text/csv;charset=utf-8');
+  showToast('📊 Exported as CSV', 'success');
+}
+document.getElementById('history-search').addEventListener('input', (e) => renderHistory(e.target.value));
+document.getElementById('clear-history-btn').addEventListener('click', clearAllHistory);
+document.getElementById('export-json-btn').addEventListener('click', exportJson);
+document.getElementById('export-csv-btn').addEventListener('click', exportCsv);
+
+/* ============================================================
+   SECTION 7: SETTINGS
+============================================================ */
+
+function applySettings() {
+  document.body.classList.toggle('dark', settings.darkMode);
+  document.getElementById('dark-mode-toggle').checked = settings.darkMode;
+  document.getElementById('vibration-toggle').checked  = settings.vibration;
+  document.getElementById('sound-toggle').checked      = settings.sound;
+  document.getElementById('auto-copy-toggle').checked  = settings.autoCopy;
+  document.getElementById('auto-open-toggle').checked  = settings.autoOpenUrl;
+  document.getElementById('dark-mode-btn').textContent = settings.darkMode ? '☀️' : '🌙';
+}
+
+function toggleSetting(key, el) {
+  settings[key] = el.checked;
+  saveSettings();
+  if (key === 'darkMode') applySettings();
+}
+
+document.getElementById('dark-mode-toggle').addEventListener('change',  (e) => toggleSetting('darkMode',    e.target));
+document.getElementById('vibration-toggle').addEventListener('change',  (e) => toggleSetting('vibration',   e.target));
+document.getElementById('sound-toggle').addEventListener('change',      (e) => toggleSetting('sound',       e.target));
+document.getElementById('auto-copy-toggle').addEventListener('change',  (e) => toggleSetting('autoCopy',    e.target));
+document.getElementById('auto-open-toggle').addEventListener('change',  (e) => toggleSetting('autoOpenUrl', e.target));
+
+document.getElementById('dark-mode-btn').addEventListener('click', () => {
+  settings.darkMode = !settings.darkMode;
+  saveSettings();
+  applySettings();
+  showToast(settings.darkMode ? '🌙 Dark mode on' : '☀️ Light mode on');
+});
+
+/* ============================================================
+   SECTION 8: TAB NAVIGATION
+============================================================ */
+
+function switchTab(tabName) {
+  if (currentTab === tabName) return;
+
+  if (currentTab === 'scanner' && tabName !== 'scanner') {
+    scanPaused = true;
+    stopCamera();
+  }
+  if (tabName === 'scanner' && currentTab !== 'scanner') {
+    scanPaused = false;
+  }
+
+  currentTab = tabName;
+
+  document.querySelectorAll('.tab-panel').forEach((p) => {
+    p.classList.toggle('active', p.id === tabName + '-panel');
+  });
+
+  document.querySelectorAll('.nav-item').forEach((item) => {
+    const active = item.dataset.tab === tabName;
+    item.classList.toggle('active', active);
+    item.setAttribute('aria-selected', active ? 'true' : 'false');
+  });
+
+  if (tabName === 'history') renderHistory(document.getElementById('history-search').value);
+  if (tabName === 'scanner') resumeScanLoop();
+}
+
+document.querySelectorAll('.nav-item').forEach((item) => {
+  item.addEventListener('click', () => switchTab(item.dataset.tab));
+});
+
+/* ============================================================
+   SECTION 9: PWA — SERVICE WORKER REGISTRATION
+============================================================ */
+
+if ('serviceWorker' in navigator) {
+  window.addEventListener('load', () => {
+    navigator.serviceWorker.register('./sw.js').catch((error) => { console.error('Service worker registration failed:', error); });
+  });
+}
+
+/* ============================================================
+   SECTION 10: INITIALISATION
+============================================================ */
+
+function init() {
+  loadSettings();
+  loadHistory();
+  applySettings();
+  renderHistory();
+
+  setInterval(() => {
+    if (currentTab === 'history') renderHistory(document.getElementById('history-search').value);
+  }, 60000);
+
+  window.addEventListener('beforeunload', () => {
+    if (videoStream) stopCamera();
+  });
+
+  document.addEventListener('visibilitychange', () => {
+    // Release the camera when the app is backgrounded; the user can restart it on return.
+    if (document.hidden && videoStream) stopCamera();
+  });
+}
+
+init();
+</script>
+</body>
+</html>
