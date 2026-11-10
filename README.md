@@ -4,6 +4,9 @@ QR Scanner is a simple web app for scanning QR codes and creating your
 own. I built it to make everyday QR tasks quick and easy, without
 needing to create an account.
 
+# Vecel Link
+https://qr-three-lime.vercel.app/
+
 ## What it can do
 
 -   Scan QR codes using your device's camera.
